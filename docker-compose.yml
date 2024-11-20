@@ -1,0 +1,36 @@
+version: "3.9"
+
+services:
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow
+    volumes:
+      - ./dags:/home/airflow/airflow/dags
+      - ./plugins:/home/airflow/airflow/plugins
+      - ./python:/home/airflow/airflow/python
+      #- ./data/kaggle:/home/airflow/.kaggle/
+      #- ./data/output:/home/airflow/output/
+    ports:
+      - "8080:8080"
+      - "27017:27017"
+    networks:
+      - pipeline-net
+
+  spark:
+    image: marcelmittelstaedt/spark_base:latest
+    container_name: hadoop
+    ports:
+      - "8088:8080"
+      - "9870:9870"
+      - "9864:9864"
+      - "8888:8888"
+      - "9000:9000"
+      - "27017:27017"
+    networks:
+      - pipeline-net
+
+networks:
+  pipeline-net:
+    driver: bridge

@@ -1,0 +1,39 @@
+FROM marcelmittelstaedt/airflow:latest
+
+RUN rm -rf /home/airflow/BigData
+RUN rm -rf /home/airflow/airflow/dags
+RUN rm -rf /home/airflow/airflow/python
+RUN rm -rf /home/airflow/airflow/plugins/python
+
+RUN apt-get update && apt-get install -y \
+    jq \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+ADD ./requirements.txt /home/tmp/python/
+
+RUN wget https://repo1.maven.org/maven2/org/mongodb/spark/mongo-spark-connector_2.11/2.3.4/mongo-spark-connector_2.11-2.3.4.jar -P /home/airflow/airflow/plugins/
+
+RUN mkdir -p /user/hadoop/spotify/track_data/raw
+RUN mkdir -p /user/hadoop/spotify/track_data/final
+RUN chown -R airflow:airflow /user/hadoop/spotify/track_data
+
+
+WORKDIR /home/tmp/python/
+RUN pip3 install -r requirements.txt
+
+WORKDIR /
+
+# Switch back to Root User
+USER root
+WORKDIR /
+
+COPY startup.sh /startup.sh
+RUN chmod +x /startup.sh
+
+# Expose Airflow Web Service Port
+EXPOSE 8080
+
+# Start startup Script
+ENTRYPOINT ["/startup.sh"]

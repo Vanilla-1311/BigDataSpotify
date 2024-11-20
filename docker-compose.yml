@@ -14,7 +14,7 @@ services:
       #- ./data/output:/home/airflow/output/
     ports:
       - "8080:8080"
-      - "27017:27017"
+    
     networks:
       - pipeline-net
 

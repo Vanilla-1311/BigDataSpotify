@@ -1,18 +1,21 @@
 from flask import Flask, render_template
+from flask_pymongo import PyMongo
 from pymongo import MongoClient
+import os
 
 app = Flask(__name__)
-
-# MongoDB-Verbindungsinformationen
-client = MongoClient("mongodb://localhost:27017")
-db = client["StoreOfCategory"]  # Ersetze 'mydatabase' durch den tatsächlichen Namen deiner Datenbank
+def get_db():
+    client = MongoClient('mongodb://mongodb:27017/')
+    db = client['StoreOfCategory']
+    return db
 
 
 @app.route('/')
 def index():
-    # Daten aus der MongoDB-Sammlung abrufen
-    tracks = db.tracks.find()  # Ersetze 'tracks' durch den tatsächlichen Namen der Sammlung
+    db = get_db()
+    tracks = db.tracks.find() 
     return render_template('index.html', tracks=tracks)
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=5000)

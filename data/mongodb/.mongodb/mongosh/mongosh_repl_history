@@ -1,0 +1,14 @@
+db.tracks.find()
+db.tracks.countDocuments()
+show collections
+use StoreOfCategory
+show collections
+db.tracks.find()
+db.tracks.countDocuments()
+db.tracks.find()
+db.tracks.countDocuments()
+db.audio_features.countDocuments()
+db.tracks.find()
+show collections
+use StoreOfCategory
+show dbs

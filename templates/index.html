@@ -3,13 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <title>Track-Kategorien</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f8ff;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: auto;
         }
         h1 {
-            color: #333;
+            color: #8e24aa; /* Dunkler Lilaton */
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            border: 2px solid #8e24aa; /* Dunkler Lilaton */
+            animation: float 3s ease-in-out infinite;
+        }
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+        .filter-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .filter-container select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 2px solid #8e24aa; /* Dunkler Lilaton */
+            background-color: #e1bee7; /* Heller Lilaton */
+            color: #8e24aa; /* Dunkler Lilaton */
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        .filter-container select:hover {
+            background-color: #8e24aa; /* Dunkler Lilaton */
+            color: #fff;
         }
         table {
             width: 100%;
@@ -17,37 +62,73 @@
             margin-top: 20px;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
+            border: 1px solid #8e24aa; /* Dunkler Lilaton */
+            padding: 12px;
             text-align: left;
+            transition: background-color 0.3s ease;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #8e24aa; /* Dunkler Lilaton */
+            color: white;
+            font-size: 1.2em;
         }
         tr:nth-child(even) {
-            background-color: #f9f9f9;
+            background-color: #e1bee7; /* Heller Lilaton */
+        }
+        tr:hover {
+            background-color: #ce93d8; /* Mittlerer Lilaton */
         }
     </style>
 </head>
 <body>
-    <h1>Track-Kategorien</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Titel</th>
-                <th>Künstler</th>
-                <th>Kategorie</th>
-            </tr>
-        </thead>
-        <tbody id="track-list">
-            {% for track in tracks %}
-            <tr>
-                <td>{{ track.title }}</td>
-                <td>{{ track.artist }}</td>
-                <td>{{ track.category }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="container">
+        <h1>Track-Kategorien</h1>
+        <div class="filter-container">
+            <label for="category-filter">Kategorie filtern:</label>
+            <select id="category-filter" onchange="filterTracks()">
+                <option value="all">Alle</option>
+                <option value="Metal🤘">Metal🤘</option>
+                <option value="Classic🏛️">Classic🏛️</option>
+                <option value="Podcast🎧">Podcast🎧</option>
+                <option value="Vocal🎤">Vocal🎤</option>
+                <option value="Electro⚡">Electro⚡</option>
+                <option value="HipHop🎤">HipHop🎤</option>
+                <option value="Soul🎷">Soul🎷</option>
+                <option value="Rock🎸">Rock🎸</option>
+                <option value="Other🦦">Other🦦</option>
+            </select>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Titel</th>
+                    <th>Künstler</th>
+                    <th>Kategorie</th>
+                </tr>
+            </thead>
+            <tbody id="track-list">
+                {% for track in tracks %}
+                <tr class="track-row" data-category="{{ track.category }}">
+                    <td>{{ track.name }}</td>
+                    <td>{{ track.artist_name }}</td>
+                    <td>{{ track.category }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <script>
+        function filterTracks() {
+            var filter = document.getElementById('category-filter').value;
+            var rows = document.querySelectorAll('.track-row');
+            rows.forEach(function(row) {
+                if (filter === 'all' || row.getAttribute('data-category') === filter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        }
+    </script>
 </body>
 </html>

@@ -10,8 +10,6 @@ services:
       - ./dags:/home/airflow/airflow/dags
       - ./plugins:/home/airflow/airflow/plugins
       - ./python:/home/airflow/airflow/python
-      #- ./data/kaggle:/home/airflow/.kaggle/
-      #- ./data/output:/home/airflow/output/
     ports:
       - "8080:8080"
     
@@ -38,6 +36,16 @@ services:
       - ./data/mongodb:/data/db
     ports:
       - "27017:27017"
+    networks:
+      - pipeline-net
+
+  flask-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.flask
+    container_name: flask-app
+    ports:
+      - "5000:5000"
     networks:
       - pipeline-net
 

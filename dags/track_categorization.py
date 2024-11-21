@@ -11,12 +11,12 @@ import pandas as pd
 import json
 from pymongo import MongoClient
 import pyspark
-from pyspark.sql import SparkSession, DataFrame
+from pyspark.sql import SparkSession
 from pyspark.sql.functions import when, col
 from pymongo import MongoClient
 import base64
-import logging
 import os
+import time
 
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
@@ -60,6 +60,8 @@ def get_for_each_track_audio_features():
             """,
             dag=dag,
         )
+        if i % 2 == 0:
+            time.sleep(1)
         task.execute(context={})
         print(last_saved_file)
 
@@ -78,7 +80,7 @@ def read_all_tracks_as_dataframe():
     track_list = []
     
     # Jede JSON-Datei einlesen und zur Liste hinzufügen
-    for item in data['items']:
+    for i, item in enumerate(data['items']):
         track = item['track']
         album = track['album']
         artist = album['artists'][0]
@@ -90,11 +92,12 @@ def read_all_tracks_as_dataframe():
             'release_date': album['release_date'],
             'artist_name': artist['name']
         }
-        track_list.append(track_info)
+        track_infos = pd.DataFrame([track_info])
+        track_list.append(track_infos)
     
-    # Alle DataFrames zu einem einzigen DataFrame zusammenführen
-    df = pd.DataFrame(track_list)
+    df_fresh_created = pd.concat(track_list, ignore_index=True)
     
+
     audio_files = glob.glob('/user/hadoop/spotify/track_data/raw/audio_features_*.json')
     
     # Liste zum Speichern der einzelnen DataFrames
@@ -105,7 +108,7 @@ def read_all_tracks_as_dataframe():
         with open(file, 'r', encoding='utf-8') as f:
             audio_features_data = json.load(f)
 
-            print(audio_features_data)
+           
             # Wenn die geladenen Daten ein Dictionary sind, mache daraus eine Liste
             if isinstance(audio_features_data, dict):
                 audio_features_data = [audio_features_data]  # In eine Liste umwandeln
@@ -136,61 +139,18 @@ def read_all_tracks_as_dataframe():
                     'valence', 'tempo', 'duration_ms'
                 ]]
             
-            dataframes.append(filtered_data)
+                dataframes.append(filtered_data)
 
     # Kombiniere alle DataFrames zu einem
     combined_df = pd.concat(dataframes, ignore_index=True)
     
-    df.to_parquet('/user/hadoop/spotify/track_data/final/tracks.parquet', index=False)
+    df_fresh_created.to_parquet('/user/hadoop/spotify/track_data/final/tracks.parquet', index=False)
     combined_df.to_parquet('/user/hadoop/spotify/track_data/final/audio_features.parquet', index=False)
     
     return df
 
-def read_all_audio_features_as_dataframe():
-    json_files = glob.glob('/user/hadoop/spotify/audio_features/raw/audio_features_*.json')
-    
-    # Liste zum Speichern der einzelnen DataFrames
-    dataframes = []
 
-    # Jede JSON-Datei einlesen und zur Liste hinzufügen
-    for file in json_files:
-        with open(file, 'r', encoding='utf-8') as f:
-            audio_features_data = json.load(f)
 
-            # Wenn die geladenen Daten ein Dictionary sind, mache daraus eine Liste
-            if isinstance(audio_features_data, dict):
-                audio_features_data = [audio_features_data]  # In eine Liste umwandeln
-
-            # Track-ID aus den Daten extrahieren (nehmen wir an, dass 'id' der Track-ID entspricht)
-            for entry in audio_features_data:
-                entry['track_id'] = entry.get('id')  # Füge die track_id-Spalte hinzu
-
-            # Erstelle ein DataFrame aus den geladenen Daten
-            df = pd.DataFrame(audio_features_data)
-            
-            # Filtere die gewünschten Spalten
-            filtered_data = df[[
-                'track_id',  # Track-ID hinzufügen
-                'danceability', 'energy', 'loudness', 'speechiness', 
-                'acousticness', 'instrumentalness', 'liveness', 
-                'valence', 'tempo', 'duration_ms'
-            ]]
-            
-            dataframes.append(filtered_data)
-
-    # Kombiniere alle DataFrames zu einem
-    combined_df = pd.concat(dataframes, ignore_index=True)
-        
-    return combined_df
-
-def process_dataframes(ti):
-    tracks_df = ti.xcom_pull(task_ids='read_track_info')
-    audio_features_df = ti.xcom_pull(task_ids='read_audio_features')
-    
-    # Speichere die DataFrames als Parquet-Dateien
-    tracks_df.to_parquet('/user/hadoop/spotify/track_data/final/tracks.parquet', index=False)
-    audio_features_df.to_parquet('/user/hadoop/spotify/audio_features/final/audio_features.parquet', index=False)
-    #TODO: Inkrement hinzufügen
 
 def calculate_category():
     spark = SparkSession.builder \
@@ -200,12 +160,14 @@ def calculate_category():
     .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.11:2.3.4") \
     .getOrCreate()
     
+    
     tracks_df = spark.read.parquet('file:///user/hadoop/spotify/track_data/final/tracks.parquet')
     audio_features_df = spark.read.parquet('file:///user/hadoop/spotify/track_data/final/audio_features.parquet')
-    
+    test_tracks = tracks_df.toPandas()
+    test_audio_features = audio_features_df.toPandas()
     # Berechnung der Kategorien basierend auf den Audio-Features
     audio_features_df = audio_features_df.withColumn(
-        "category",
+        "category", 
         when((audio_features_df["energy"] > 0.7) & (audio_features_df["tempo"] > 120) & (audio_features_df["acousticness"] < 0.3), "Metal🤘")
         .when((audio_features_df["acousticness"] > 0.7) & (audio_features_df["energy"] < 0.5) & (audio_features_df["tempo"] < 100), "Classic🏛️")
         .when(audio_features_df["speechiness"] > 0.8, "Podcast🎧")
@@ -214,15 +176,19 @@ def calculate_category():
         .when((audio_features_df["energy"] > 0.6) & (audio_features_df["tempo"] > 100) & (audio_features_df["tempo"] < 140) & (audio_features_df["danceability"] > 0.5), "HipHop🎤")
         .when((audio_features_df["valence"] > 0.5) & (audio_features_df["danceability"] > 0.5) & (audio_features_df["danceability"] < 0.7) & (audio_features_df["energy"] > 0.4) & (audio_features_df["energy"] < 0.6), "Soul🎷")
         .when((audio_features_df["energy"] > 0.6) & (audio_features_df["tempo"] > 100) & (audio_features_df["tempo"] < 140) & (audio_features_df["danceability"] > 0.5) & (audio_features_df["danceability"] < 0.7), "Rock🎸")
-        .otherwise("Other")
+        .otherwise("Other🦦")
     )
+    
+    
+    
     tracks_df = tracks_df.withColumn("track_id", col("track_id").cast("string"))
     audio_features_df = audio_features_df.withColumn("track_id", col("track_id").cast("string"))
-    
+
     
     # Zusammenführen der DataFrames
     merged_df = tracks_df.join(audio_features_df, on='track_id', how='inner')
     merged_df.write.format("mongo").mode("append").save()
+
 
 dag = DAG(
     'spotify_etl_pipeline',
@@ -237,6 +203,27 @@ playlist_id = "3qLDbNZyN6PQpOpgiq88jZ"
 client_credentials = f"{client_id}:{client_secret}"
 encoded_credentials = base64.b64encode(client_credentials.encode()).decode()
 
+clear_directorys = BashOperator(
+    task_id='clear_directorys',
+    bash_command="""
+    hdfs dfs -rm -r /user/hadoop/spotify/track_data/raw
+    hdfs dfs -rm -r /user/hadoop/spotify/track_data/final
+    hdfs dfs -mkdir -p /user/hadoop/spotify/track_data/raw
+    hdfs dfs -mkdir -p /user/hadoop/spotify/track_data/final
+    """,
+    dag=dag
+)
+
+def clear_mongo_data():
+    client = MongoClient("mongodb://mongodb:27017/")
+    db = client["StoreOfCategory"]
+    db.tracks.drop()
+
+clear_database = PythonOperator(
+    task_id=f'clear_database',
+    python_callable=clear_mongo_data,
+    dag=dag,
+)
 
 # Task1
 get_playlist_tracks = BashOperator(
@@ -288,23 +275,6 @@ read_track_as_panda_frame = PythonOperator(
     dag=dag
 )
 
-'''
-#Task5    
-read_audio_features_as_panda_frame = PythonOperator(
-    task_id='read_audio_features',
-    python_callable=read_all_audio_features_as_dataframe,
-    dag=dag
-)
-
-#Task6
-process_data = PythonOperator(
-    task_id='process_data',
-    python_callable=process_dataframes,
-    provide_context=True, 
-    dag=dag
-)
-'''
-
 #Task7
 calculate_category_and_save_to_db = PythonOperator(
     task_id='calculate_category',
@@ -315,6 +285,4 @@ calculate_category_and_save_to_db = PythonOperator(
 
 
 # Airflow Tasks
-'''>> get_track_info '''
-#get_playlist_tracks >> get_audio_features >> read_track_as_panda_frame >> read_audio_features_as_panda_frame >> process_data >> calculate_category_and_save_to_db 
-get_playlist_tracks >> get_audio_features >> read_track_as_panda_frame >> calculate_category_and_save_to_db
+clear_directorys >> clear_database >> get_playlist_tracks >> get_audio_features >> read_track_as_panda_frame >> calculate_category_and_save_to_db

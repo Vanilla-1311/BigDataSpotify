@@ -27,6 +27,16 @@ services:
       - "9864:9864"
       - "8888:8888"
       - "9000:9000"
+    
+    networks:
+      - pipeline-net
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - ./data/mongodb:/data/db
+    ports:
       - "27017:27017"
     networks:
       - pipeline-net

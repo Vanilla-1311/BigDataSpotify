@@ -195,8 +195,8 @@ def process_dataframes(ti):
 def calculate_category():
     spark = SparkSession.builder \
     .appName("MusicCategorization") \
-    .config("spark.mongodb.input.uri", "mongodb://localhost:27017/StoreOfCategory.tracks") \
-    .config("spark.mongodb.output.uri", "mongodb://localhost:27017/StoreOfCategory.tracks") \
+    .config("spark.mongodb.input.uri", "mongodb://mongodb:27017/StoreOfCategory.tracks") \
+    .config("spark.mongodb.output.uri", "mongodb://mongodb:27017/StoreOfCategory.tracks") \
     .config("spark.jars.packages", "org.mongodb.spark:mongo-spark-connector_2.11:2.3.4") \
     .getOrCreate()
     

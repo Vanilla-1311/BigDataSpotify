@@ -4,7 +4,6 @@
 from airflow import DAG
 from airflow.operators.bash_operator import BashOperator
 from airflow.operators.python_operator import PythonOperator
-from airflow.models import Variable
 from datetime import datetime
 import glob
 import pandas as pd
@@ -20,14 +19,23 @@ import time
 
 os.environ['PYTHONIOENCODING'] = 'utf-8'
 
+
+
 default_args = {
     'owner': 'airflow',
     'start_date': datetime(2024, 1, 1),
     'retries': 1,
 }
 
-# Standard-Playlist-ID, falls keine beim Start übergeben wird
-DEFAULT_PLAYLIST_ID = Variable.get("playlist_id", default_var="3qLDbNZyN6PQpOpgiq88jZ")
+def clear_mongo_data():
+    client = MongoClient("mongodb://mongodb:27017/")
+    db = client["StoreOfCategory"]
+    db.tracks.drop()
+    
+def get_playlist_id_from_file():
+    with open("/home/airflow/airflow/playlist/playlist_id.txt", "r", encoding="utf-8") as file:
+        playlist_id = file.read()
+    return playlist_id
 
 def get_for_each_track_audio_features():
     json_file = '/user/hadoop/spotify/track_data/raw/playlist_tracks.json'
@@ -40,7 +48,7 @@ def get_for_each_track_audio_features():
         track_id = track['id']
          
         last_saved_file = f'/user/hadoop/spotify/track_data/raw/audio_features_{track_id}.json'
-        print(track_id)
+        
         task = BashOperator(
             task_id=f'get_track_details_{track_id}',
             bash_command=f"""
@@ -63,23 +71,15 @@ def get_for_each_track_audio_features():
         if i % 2 == 0:
             time.sleep(1)
         task.execute(context={})
-        print(last_saved_file)
 
-def read_all_tracks_as_dataframe():
-    # Pfad zu den JSON-Dateien
+def save_tracks_to_final_path():
     json_files = '/user/hadoop/spotify/track_data/raw/playlist_tracks.json'
-    
-    # Liste zum Speichern der einzelnen DataFrames
-    dataframes = []
     
     with open(json_files, 'r',  encoding='utf-8') as file:
         data = json.load(file)
-    
-    #tracks = data['tracks']['items']
         
     track_list = []
     
-    # Jede JSON-Datei einlesen und zur Liste hinzufügen
     for i, item in enumerate(data['items']):
         track = item['track']
         album = track['album']
@@ -100,40 +100,33 @@ def read_all_tracks_as_dataframe():
 
     audio_files = glob.glob('/user/hadoop/spotify/track_data/raw/audio_features_*.json')
     
-    # Liste zum Speichern der einzelnen DataFrames
+
     dataframes = []
 
-    # Jede JSON-Datei einlesen und zur Liste hinzufügen
     for file in audio_files:
         with open(file, 'r', encoding='utf-8') as f:
             audio_features_data = json.load(f)
 
            
-            # Wenn die geladenen Daten ein Dictionary sind, mache daraus eine Liste
             if isinstance(audio_features_data, dict):
-                audio_features_data = [audio_features_data]  # In eine Liste umwandeln
+                audio_features_data = [audio_features_data]  
 
-            # Track-ID aus den Daten extrahieren (nehmen wir an, dass 'id' der Track-ID entspricht)
             for entry in audio_features_data:
-                entry['track_id'] = entry.get('id')  # Füge die track_id-Spalte hinzu
+                entry['track_id'] = entry.get('id')  
 
-            # Erstelle ein DataFrame aus den geladenen Daten
             df = pd.DataFrame(audio_features_data)
             
-                        # Überprüfen, ob die erforderlichen Felder vorhanden sind
             required_fields = ['acousticness', 'speechiness', 'tempo', 'liveness', 'loudness', 'duration_ms', 'danceability', 'instrumentalness', 'energy', 'valence']
             
             if all(field in audio_features_data[0] for field in required_fields):
-                # Track-ID aus den Daten extrahieren (nehmen wir an, dass 'id' der Track-ID entspricht)
                 for entry in audio_features_data:
-                    entry['track_id'] = entry.get('id')  # Füge die track_id-Spalte hinzu
-
-                # Erstelle ein DataFrame aus den geladenen Daten
+                    entry['track_id'] = entry.get('id')  
+                    
                 df = pd.DataFrame(audio_features_data)
                 
-                # Filtere die gewünschten Spalten
+        
                 filtered_data = df[[
-                    'track_id',  # Track-ID hinzufügen
+                    'track_id',  
                     'danceability', 'energy', 'loudness', 'speechiness', 
                     'acousticness', 'instrumentalness', 'liveness', 
                     'valence', 'tempo', 'duration_ms'
@@ -141,14 +134,13 @@ def read_all_tracks_as_dataframe():
             
                 dataframes.append(filtered_data)
 
-    # Kombiniere alle DataFrames zu einem
+
     combined_df = pd.concat(dataframes, ignore_index=True)
     
     df_fresh_created.to_parquet('/user/hadoop/spotify/track_data/final/tracks.parquet', index=False)
     combined_df.to_parquet('/user/hadoop/spotify/track_data/final/audio_features.parquet', index=False)
     
     return df
-
 
 
 
@@ -163,9 +155,7 @@ def calculate_category():
     
     tracks_df = spark.read.parquet('file:///user/hadoop/spotify/track_data/final/tracks.parquet')
     audio_features_df = spark.read.parquet('file:///user/hadoop/spotify/track_data/final/audio_features.parquet')
-    test_tracks = tracks_df.toPandas()
-    test_audio_features = audio_features_df.toPandas()
-    # Berechnung der Kategorien basierend auf den Audio-Features
+  
     audio_features_df = audio_features_df.withColumn(
         "category", 
         when((audio_features_df["energy"] > 0.7) & (audio_features_df["tempo"] > 120) & (audio_features_df["acousticness"] < 0.3), "Metal🤘")
@@ -194,15 +184,15 @@ dag = DAG(
     'spotify_etl_pipeline',
     start_date=datetime(2024, 11, 11),
     schedule_interval=None,
-    params={"playlist_id": DEFAULT_PLAYLIST_ID}
 )
 
 client_id = "d92387db27094e1185f12bd301e911f0"
 client_secret = "3016739d849245609bbb99010c18532e"
-playlist_id = "3qLDbNZyN6PQpOpgiq88jZ"
 client_credentials = f"{client_id}:{client_secret}"
 encoded_credentials = base64.b64encode(client_credentials.encode()).decode()
+PLAYLIST_ID = get_playlist_id_from_file()
 
+# Task 1
 clear_directorys = BashOperator(
     task_id='clear_directorys',
     bash_command="""
@@ -214,41 +204,29 @@ clear_directorys = BashOperator(
     dag=dag
 )
 
-def clear_mongo_data():
-    client = MongoClient("mongodb://mongodb:27017/")
-    db = client["StoreOfCategory"]
-    db.tracks.drop()
-
+# Task 2
 clear_database = PythonOperator(
     task_id=f'clear_database',
     python_callable=clear_mongo_data,
     dag=dag,
 )
 
-# Task1
+# Task 3
 get_playlist_tracks = BashOperator(
     task_id='get_playlist_tracks',
-    bash_command="""
+    bash_command=f"""
     curl -I https://accounts.spotify.com/api/token
     export LANG=en_US.UTF-8
 
     CLIENT_ID='d92387db27094e1185f12bd301e911f0'
     CLIENT_SECRET='3016739d849245609bbb99010c18532e'
     CLIENT_ID_SECRET=$(echo -n "$CLIENT_ID:$CLIENT_SECRET" | base64 -w 0)
-    PLAYLIST_ID="{{ params.playlist_id }}"
+    PLAYLIST_ID="{PLAYLIST_ID}"
+    
     ACCESS_TOKEN=$(curl --location --request POST 'https://accounts.spotify.com/api/token' \
     --header 'Authorization: Basic '$CLIENT_ID_SECRET \
     --header 'Content-Type: application/x-www-form-urlencoded' \
     --data-urlencode 'grant_type=client_credentials' | jq -r '.access_token')
-    echo 'ACCESS_TOKEN = '$ACCESS_TOKEN
-    
-    echo "RETRIEVED ACCESS TOKEN: $ACCESS_TOKEN"
-    echo $PLAYLIST_ID
-    if ping -c 1 hadoop &> /dev/null; then
-        echo "Hadoop ist erreichbar."
-    else
-        echo "Hadoop ist nicht erreichbar. Task wird abgebrochen."
-    fi
     
     curl -X "GET" "https://api.spotify.com/v1/playlists/$PLAYLIST_ID/tracks" \
         -H "Accept: application/json" \
@@ -260,22 +238,21 @@ get_playlist_tracks = BashOperator(
     dag=dag 
 )
     
-
-
+#Task 4
 get_audio_features = PythonOperator(
     task_id='get_audio_features',
     python_callable=get_for_each_track_audio_features,
     dag=dag
 )
 
-#Task 4
-read_track_as_panda_frame = PythonOperator(
+#Task 5
+save_to_final_path = PythonOperator(
     task_id='read_track_info',
-    python_callable=read_all_tracks_as_dataframe,
+    python_callable=save_tracks_to_final_path,
     dag=dag
 )
 
-#Task7
+#Task 6
 calculate_category_and_save_to_db = PythonOperator(
     task_id='calculate_category',
     python_callable=calculate_category,
@@ -285,4 +262,4 @@ calculate_category_and_save_to_db = PythonOperator(
 
 
 # Airflow Tasks
-clear_directorys >> clear_database >> get_playlist_tracks >> get_audio_features >> read_track_as_panda_frame >> calculate_category_and_save_to_db
+clear_directorys >> clear_database >> get_playlist_tracks >> get_audio_features >> save_to_final_path >> calculate_category_and_save_to_db

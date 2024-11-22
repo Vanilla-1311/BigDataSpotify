@@ -4,6 +4,7 @@ RUN rm -rf /home/airflow/BigData
 RUN rm -rf /home/airflow/airflow/dags
 RUN rm -rf /home/airflow/airflow/python
 RUN rm -rf /home/airflow/airflow/plugins/python
+RUN rm -rf /home/airflow/airflow/playlist
 
 RUN apt-get update && apt-get install -y \
     jq \

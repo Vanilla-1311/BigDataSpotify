@@ -10,6 +10,7 @@ services:
       - ./dags:/home/airflow/airflow/dags
       - ./plugins:/home/airflow/airflow/plugins
       - ./python:/home/airflow/airflow/python
+      - ./playlist:/home/airflow/airflow/playlist
     ports:
       - "8080:8080"
     

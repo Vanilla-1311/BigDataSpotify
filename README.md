@@ -3,250 +3,102 @@
 **Autor:** Vanessa Wettori  
 **Institution:** DHBW Stuttgart
 
-Dieses Projekt analysiert Hubway Bike-Sharing-Daten und erstellt ein Excel-File mit Dashboards, das zentrale **Kennzahlen (KPIs)** visualisiert.  
-Es verwendet **Docker** und **Apache Airflow**, um eine automatisierte ETL-Pipeline (Extrahieren, Transformieren, Laden) zu implementieren.  
-Das Projekt wurde als **Projektabgabe für die Vorlesung Big Data** angefertigt.
+Der ETL-Workflow nutzt Apache Airflow, um Daten aus der Spotify-API zu extrahieren, diese zu verarbeiten und anschließend in einer MongoDB-Datenbank zu speichern. Der Nutzer gibt eine Spotify-Playlist-ID ein, anhand der die enthaltenen Tracks geladen werden. Für jeden Track werden zusätzlich die zugehörigen Audio-Features abgerufen. Auf Basis dieser Audio-Features werden die Songs automatisch einer Kategorie wie beispielsweise HipHop zugeordnet. Die Ergebnisse lassen sich anschließend über eine Weboberfläche übersichtlich anzeigen.
 
 ## 🗂 **Inhaltsverzeichnis**
 
-- [Berechnete KPIs](#Berechnete-KPIs)
+
 - [Projektstruktur](#Projektstruktur)
 - [Airflow](#Airflow)
 - [Funktionen](#Funktionen)
 - [Ausführung](#Ausführung)
 
-## **Berechnete-KPIs**
+## Projektstruktur
 
-Jede der folgenden **Kennzahlen** wird monatlich berechnet und einzelnd über ein Dashboard visualisiert:
-
-### **Allgemeine Statistiken**
-
-- Durchschnittliche Fahrtdauer (in Minuten)
-- Durchschnittliche Fahrdistanz (in Kilometern)
-
-### **Nutzerstatistiken**
-
-- Nutzung nach Geschlecht (in Prozent)
-- Nutzung nach Altersgruppe (in Prozent)
-
-### **Top 10 Auswertungen**
-
-- Meistgenutzte Fahrräder
-- Beliebteste Startstationen
-- Beliebteste Endstationen
-
-### **Zeitbezogene Nutzung**
-
-- Nutzung nach Zeitfenstern (in Prozent):
-  - 00:00–06:00
-  - 06:00–12:00
-  - 12:00–18:00
-  - 18:00–24:00
-
----
-
-### **Screenshot: Dashboard**
-
-![Screenshot](./data/ressourcenMarkdown/dashboard.png)
-
-## 📂 Projektstruktur
-
-Die Projektstruktur ist wie folgt organisiert:
+Von nicht relevanten Ordnern wurde darauf verzichtet, die Struktur und Inhalte anzugeben.
+Die Projektstrutur sieht wie folgt aus:
 
 ```bash
-├── airflow/
-│   ├── dags/
-│   ├── plugins/
-│   ├── python/
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── startup.sh
-├── data/
-│   ├── kaggle/
-│   ├── output/
-│   ├── raw/
-│   └── Ressourcen.md
-├── docker-compose.yml
-├── README.md
-└── requirements.txt
+├─ Dockerfile.airflow
+├─ Dockerfile.flask
+├─ README.md
+├─ app.py
+├─ dags
+│  ├─ __pycache__
+│  └─ track_categorization.py
+├─ data
+│  └─ mongodb/
+├─ docker-compose.yml
+├─ playlist
+│  └─ playlist_id.txt
+├─ plugins/
+├─ requirements.tx
+├─ set_playlist_id.py
+├─ startup.sh
+└─ templates
+   └─ index.html
 ```
 
-### 🔍 Erklärung der Struktur
+### Erklärung der Struktur
 
-- **`airflow/`**: Enthält alle relevanten Dateien und Verzeichnisse für Airflow:
-
-  - **`dags/`**: Die DAGs (Directed Acyclic Graphs), welche die Workflow-Definitionen enthalten. Außerdem ist eine helper.py hinterlegt
-  - **`plugins/`**: Individuelle Erweiterungen für Airflow.
-  - **`python/`**: Skripte, die innerhalb der DAGs verwendet werden.
-  - **`Dockerfile`**: Konfiguriert das Airflow-Docker-Image.
-  - **`requirements.txt`**: Bibliotheken die in das Dockerimage geladen werden
-  - **`startup.sh`**: Ein Skript, um den Airflow-Scheduler und den Webserver zu starten.
-
+- **`Dockerfile.airflow`**: Die Konfiguration für das Airflow-Docker-Image
+- **`Dockerfile.flask`**: Die Konfiguration für das Flask-Docker-Image
+- **`README.md`**: Die Dokumentation des Projekts.
+- **`app.py`**: - Die Datei erstellt eine Flask-Webanwendung, die eine Verbindung zu einer MongoDB-Datenbank herstellt und eine HTML-Seite rendert, die alle Tracks aus der Datenbank anzeigt.
+- **`dags/`**: Enthält die DAG die für den Workflow zuständig ist.
+  - **`track_categorization`**: Enthält den Airflow-DAG um die Daten von Spotify zu ziehen und verarbeitet diese weiter.
 - **`data/`**: Verzeichnis für die Daten:
+  - **`mongodb/`**: JSON mit Key für die Kaqqle API.
+- **`docker-compose.yml`**: Verwaltet die verschiedenen Container.
+- **`playlist`**: Ordner, welches eine Textdatei mit der Playlist-Id enthält, die vom User eingegeben wurde.
+- **`plugins/`**: Eine Erweiterungen für Airflow
+- **`requirements.txt`**: Bibliotheken die für das Projekt benötigt werden.
+- **`set_playlist_id.py`**: Skript, mit dem der User die Playlist-Id setzen kann.
+- **`startup.sh`**: Startet den Airflow-Scheduler und den Webserver.
+-**`templates`**: Enthält das Frontend, um die Ergebnisse aus MongoDB visuell darzustellen.
+  -**`index.html`**: Frontend für die Ergenisee
 
-  - **`kaggle/`**: JSON mit Key für die Kaqqle API.
-  - **`output/`**: Ergebniss des Workflows, Excel Datei
-  - **`ressourcenMarkdown/`**: Ressourcen für die Dokumentation in der Markdown
+## **Airflow**
 
-- **`docker-compose.yml`**: Eine Datei für die Orchestrierung der Docker-Container.
-
-- **`README.md`**: Dokumentation des Projekts.
-
-## 📂 **Airflow**
-
-Der Kern der Automatisierung bildet der Airflow-DAG, der in `airflow/dags/hubway_data_pipeline.py` definiert ist.
-
-![Screenshot](./data/ressourcenMarkdown/dag_visualisierung.png)
-
-Die obige Abbildung zeigt die einzelnen Schritte des DAGs und deren Abhängigkeiten. Im Folgenden werden diese Schritte systematisch erklärt:
+Die Airflow-DAG besteht aus 6 Tasks, die im Folgenden weiter erklärt werden.
 
 ### **Ablauf des Workflows**
 
-1. **Erstellen der Eingabe- und Ausgabeverzeichnisse:**
+1. **Erstellen und leeren der Verzeichnisse: clear_directorys**
 
-   - Die Tasks `create_import_dir` und `create_output_dir` erstellen Verzeichnisse für die Eingabe- und Ausgabedaten. Dafür wird der benutzerdefinierte Operator `create_directory_operator.py` verwendet.
+   - Die Task `clear_directorys` ist ein BashOperator, der vorhandene Verzeichnisse löscht undneue Verzeichnisse auf dem HDFS (Hadoop Distributed File System)  erstellt, um sicherzustellen, dass alte Daten den Workflow nicht beeinflussen.
 
-2. **Leeren der Verzeichnisse:**
+2. **Leeren der Datenbank: clear_database**
 
-   - Die erzeugten Verzeichnisse werden mit den Tasks `clear_import_dir` und `clear_output_dir` geleert. Dadurch wird sichergestellt, dass alte Daten den Workflow nicht beeinflussen. Der Operator `clear_directory_operator.py` wird hierfür genutzt.
+   - Die Task `clear_database` ist ein PythonOperator, der in der Airflow-DAG definiert ist. Er ruft die Funktion `clear_mongo_data` auf, um die tracks-Kollektion in der MongoDB-Datenbank zu löschen. Dies stellt sicher, dass alte Daten entfernt werden und die Datenbank für neue Daten vorbereitet ist.
 
-3. **Herunterladen der Daten:**
+3. **Herunterladen der Track-IDs: get_playlist_tracks**
 
-   - Die Task `download_hubway_data` lädt die Hubway-Daten im CSV-Format mithilfe der `Kaggle API` herunter. Ein speziell entwickelter Operator übernimmt die Authentifizierung und den Download.
+   - Die Task `get_playlist_tracks` ist ein BashOperator, der die Spotify-API aufruft, um die Tracks einer Playlist abzurufen. Die Ergenisse werden als JSON-Datei im HDFS (Hadoop Distributed File System) gespeichert. Dabei wird zunächst ein Zugriffstoken von der Spotify-API angefordert und anschließend die Tracks der Playlist abgerufen. Die Playlist-ID wurde vor Containerstart von dem User eingegeben und wird zum Start der ETL aus dem Textdatei in eine Variable eingelesen, die Task verwendet.
 
-4. **Erstellung einer Jahr-Monat-Liste:**
+4. **Herunterladen der Audiofeatures für die zuor gefundenen Tracks: get_audio_features**
 
-   - Die Task `get_year_months` analysiert die heruntergeladenen Dateien und extrahiert eine Liste von Jahr-Monats-Werten (z. B. „201601“). Es werden nur Dateien berücksichtigt, deren Namen mit einer sechsstelligen Zahl beginnen. Die Liste dient als Basis für die weiteren Verarbeitungsschritte.
+   - Die Task `get_audio_features` ist ein PythonOperator, der die Funktion `get_for_each_track_audio_features` aufruft. Diese Funktion dient dazu, die Audio-Features für jeden Track einer Playlist abzurufen und als JSON-Dateien im HDFS zu speichern. Dabei liest `get_for_each_track_audio_features` die Track-IDs aus einer JSON-Datei, die die Playlist-Daten enthält, und ruft die entsprechenden Audio-Features über die Spotify-API ab.
 
-5. **Erstellen von HDFS-Verzeichnissen:**
+5. **Speichern im finalen Verzeichnis: save_to_final_path**
 
-   - Auf Basis der Jahr-Monats-Liste werden Verzeichnisse auf HDFS erstellt:
-     - `create_hdfs_raw_data_dir`: Für die Speicherung der Rohdaten.
-     - `create_hdfs_final_data_dir`: Für die bereinigten Daten.
-   - Der Operator `hdfs_mkdirs_file_operator.py` wird hierbei verwendet.
+   - Die Task `save_to_final_path` ist ein PythonOperator, der die Funktion `save_tracks_to_final_path` aufruft, um die abgerufenen Track- und Audio-Feature-Daten zu verarbeiten und die bereinigten Daten als Parquet-Dateien im HDFS zu speichern.
 
-6. **Übertragen der Rohdaten in HDFS:**
+6. **Kategorien berechnen und in Datenbank speichern: calculate_category_and_save_to_db**
 
-   - Die Task `upload_raw_data` lädt die heruntergeladenen CSV-Dateien in die zuvor erstellten HDFS-Verzeichnisse hoch.
+   - Die Task `calculate_category_and_save_to_db` ist ein PythonOperator, der die Funktion calculate_category aufruft, um die Audio-Features der Tracks zu analysieren. Die Tracks werden mithilfe von Apache Spark, in verschiedene Kategorien eingeordnet und die Ergebnisse in einer MongoDB-Datenbank zu gespeichert. Diese ist die endgültige Datenbank.
 
-7. **Bereinigung der Daten:**
+## 🔍 **Weitere verwendete Skripte**
 
-   - Die Task `clean_raw_data` verarbeitet die Rohdaten. Dabei werden nur relevante Informationen extrahiert und nicht benötigte Felder entfernt. Das Skript `clean_raw_data.py` enthält die Logik dieser Datenbereinigung.
+Wie schon in dem Kaptiel Ordnerstruktur erwähnt, gibt es noch zwei weitere Python-Skripte, die die Funktionweise von der ETL sicherstellen. Sie sind für die Ausführung und Darstellung der Ergebnisse wichtig.
 
-8. **Erstellen von Verzeichnissen für KPIs:**
+1. **`set_playlist_id.py`:
+   - Das Skript ermöglicht es dem Benutzer, eine Playlist-ID einzugeben und diese in einer Datei zu speichern. Diese Playlist-ID wird später von der Airflow-DAG verwendet, um die Tracks der angegebenen Playlist von der Spotify-API abzurufen. Dazu erstellt das Skript eine Text-Datei, die die Playlist-ID enthält. Diese wird in dem Verzeichnis `Playlist` gespeichert, worauf die DAG zugriff hat und dieses auslesen kann.
+  
+2. **`app.py`**:
+   -Das Skript erstellt eine Flask-Webanwendung, die eine Verbindung zu einer MongoDB-Datenbank herstellt und eine HTML-Seite rendert, die alle Tracks aus der Datenbank anzeigt. Somit wird dadurch die Weboberfläche bereitgestellt und sichergestellt, dass eine Verbindung zu der Datenbank besteht.
 
-   - Die Task `create_hdfs_kpi_dir` legt ein HDFS-Verzeichnis für die Speicherung der KPIs an.
-
-9. **Berechnung der KPIs:**
-
-   - Die Task `calculate_kpis` berechnet wichtige Kennzahlen wie durchschnittliche Fahrtdauer, Fahrdistanz oder Nutzung pro Altersgruppe. Das Skript `calculate_kpis.py` führt die Berechnungen durch und speichert die Ergebnisse im HDFS.
-
-10. **Erstellen der Excel-Dashboards:**
-    - Die Task `create_excel` erstellt eine Excel-Datei mit separaten Dashboards für jeden Monat. Die Daten werden mithilfe des Skripts `create_excel.py` visualisiert.
-
-## 🔍 **Funktionen**
-
-Die Datenverarbeitung der Rohdaten bis hin zum Dashboard erfolgt über drei Hauptskripte, die im Verzeichnis `airflow/python` abgelegt sind.
-
-### 1. **Skript: `clean_raw_data.py`**
-
-Dieses Skript bereinigt die Daten im ersten Schritt und sorgt dafür, dass nur die notwendigen Daten für die weitere Verarbeitung erhalten bleiben.
-
-#### Wichtige Funktionen:
-
-- **`determine_timeslot(hour: int)`**:
-
-  - Ordnet die gegebene Stunde (0–24) einem Timeslot zu:
-    - 0: 00:00–06:00
-    - 1: 06:00–12:00
-    - 2: 12:00–18:00
-    - 3: 18:00–24:00
-
-- **`is_within_timeslot(start_time: datetime, end_time: datetime, time_slot: int)`**:
-
-  - Prüft, ob die Start- und Endzeit einer Fahrt in einem bestimmten Timeslot liegen und weist die Fahrt diesem zu.
-
-- **`haversine(s_lat, s_lon, e_lat, e_lon)`**:
-
-  - Berechnet die kürzeste Entfernung zwischen zwei geografischen Koordinaten (Start und Ziel) mithilfe der Haversine-Formel.
-
-- **`calculate_age(birth_year)`**:
-
-  - Bestimmt das Alter eines Nutzers basierend auf seinem Geburtsjahr.
-
-- **`determine_generation(birth_year)`**:
-  - Ordnet Nutzer anhand ihres Geburtsjahrs einer Generation (z. B. „Millennials“) zu.
-
-#### Main-Funktion:
-
-In der `main`-Funktion werden die oben genannten Berechnungen für jede Fahrt durchgeführt. Anschließend werden irrelevante Spalten entfernt, um Speicherplatz zu sparen. Die bereinigten Daten werden in HDFS gespeichert.
-
----
-
-### 2. **Skript: `calculate_kpis.py`**
-
-Dieses Skript berechnet die KPIs (Key Performance Indicators) für jeden Monat.
-
-#### Wichtige Funktionen:
-
-- **`calculate_average_kpis(df)`**:
-
-  - Berechnet Durchschnittswerte für:
-    - Fahrtdauer (`trip_duration`)
-    - Fahrdistanz (`station_distance`)
-
-- **`calculate_gender_share(df)`**:
-
-  - Bestimmt den Anteil der Geschlechter (Männer, Frauen, unbekannt) an den Fahrten in Prozent.
-
-- **`calculate_top_n(df, column_name, rank, return_type="value")`**:
-
-  - Liefert die Top-N-Werte einer Spalte, z. B. die 10 meistgenutzten Fahrräder.
-
-- **`calculate_time_slot_percentage(df, slot)`**:
-
-  - Berechnet den Anteil der Fahrten, die in einem bestimmten Timeslot stattfinden (z. B. 06:00–12:00).
-
-- **`calculate_generation_percentage(df, generation_value)`**:
-  - Berechnet den Anteil der Nutzer einer bestimmten Generation (z. B. Babyboomer).
-
-#### Main-Funktion:
-
-Die `main`-Funktion ruft diese Funktionen für jeden Monats-Jahr-Wert auf. Die berechneten KPIs werden in neue Spalten des DataFrames eingefügt und anschließend in einem HDFS-Verzeichnis gespeichert.
-
----
-
-### 3. **Skript: `create_excel.py`**
-
-Dieses Skript erstellt eine Excel-Datei mit Dashboards für jeden Monat.
-
-#### Wichtige Schritte:
-
-- Konvertiert die KPI-Daten aus HDFS in einzelne Excel-Sheets.
-- Fügt visuelle Dashboards mit Diagrammen und Tabellen hinzu, um die KPIs pro Monat darzustellen.
-
-#### Main-Funktion:
-
-Die `main`-Funktion liest die berechneten KPIs für jeden Monat, schreibt diese in Excel-Sheets und erstellt für jeden Monat ein Dashboard.
-
----
-
-### **Zusammenhang der Skripte**
-
-1. **`clean_raw_data.py`**:
-
-   - Bereitet die Rohdaten auf und speichert sie als bereinigte Daten in HDFS.
-
-2. **`calculate_kpis.py`**:
-
-   - Nutzt die bereinigten Daten, um wichtige Kennzahlen zu berechnen und in HDFS zu speichern.
-
-3. **`create_excel.py`**:
-   - Verarbeitet die gespeicherten KPIs und erstellt eine visuelle Darstellung in Form von Dashboards.
-
-Die klare Trennung der Skripte gewährleistet eine modulare und nachvollziehbare Datenpipeline.
-
-## ⚙️ **Ausführung**
+## **Ausführung**
 
 1. **Voraussetzungen:**
 
@@ -255,13 +107,23 @@ Die klare Trennung der Skripte gewährleistet eine modulare und nachvollziehbare
 2. **Schritte zur Ausführung:**
 
 ```bash
-git clone https://github.com/DanielD884/BigData.git
+git clone https://github.com/Vanilla-1311/BigDataSpotify.git
 cd BigData
+```
 
+Nach diesen Befehlen muss zunächst `set_playlist_id.py` ausgeführt werden. Dies geschieht mithilfe diesen Befehls:
+
+```bash
+python set_playlist_id.py
+```
+
+Hier wird man aufgefordert, die Playlist-ID einzugeben. Danach kann der Conatiner gestartet werden.
+
+```bash
 docker-compose up
 ```
 
-### Hadoop Cluster starten
+### 3. Hadoop Cluster starten
 
 ```bash
 docker exec -it hadoop bash
@@ -269,15 +131,10 @@ sudo su hadoop
 start-all.sh
 ```
 
-### Probleme
+### 4. Airflow-API öffnen
 
-Bei der Ausfürhung auf einer VM auf der Google Cloud Platform, kann es zu Problemen kommen, dass der Airflow keine Schreibrechte hat, um die erstelle Excelfile in dem lokalen Verzeichnis data/outout/ zu schreiben. Deshalb ist vorher die notwendigen Rechte zu vergeben.
+Auf `localhost:8080` kann die Airflow-Api jetzt geöffnet werden, um die DAG zu starten.
 
-```bash
-sudo chmod 777 data/output/
+### 5. Flask-Frontend öffnen
 
-```
-
-### Airflow Dags starten
-
-Nun kann der Airflow-Server unter lokale VM(http://localhost:8080/) oder über die Google Cloud (<externe-IP>:8080) aufgerufen werden. Hier kann der Dags gestartet werden.
+Im Browser unter `localhost:5000` kann nach der Vollendigung der Aufgabe, die Ergebnisse betrachtet werden. 

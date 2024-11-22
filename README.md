@@ -64,27 +64,27 @@ Die Airflow-DAG besteht aus 6 Tasks, die im Folgenden weiter erklärt werden. Di
 
 ### **Ablauf des Workflows**
 
-1. **Erstellen und leeren der Verzeichnisse: clear_directorys**
+1. **Erstellen und leeren der Verzeichnisse: `clear_directorys`**
 
    - Die Task `clear_directorys` ist ein BashOperator, der vorhandene Verzeichnisse löscht undneue Verzeichnisse auf dem HDFS (Hadoop Distributed File System)  erstellt, um sicherzustellen, dass alte Daten den Workflow nicht beeinflussen.
 
-2. **Leeren der Datenbank: clear_database**
+2. **Leeren der Datenbank: `clear_database`**
 
    - Die Task `clear_database` ist ein PythonOperator, der in der Airflow-DAG definiert ist. Er ruft die Funktion `clear_mongo_data` auf, um die tracks-Kollektion in der MongoDB-Datenbank zu löschen. Dies stellt sicher, dass alte Daten entfernt werden und die Datenbank für neue Daten vorbereitet ist.
 
-3. **Herunterladen der Track-IDs: get_playlist_tracks**
+3. **Herunterladen der Track-IDs: `get_playlist_tracks`**
 
    - Die Task `get_playlist_tracks` ist ein BashOperator, der die Spotify-API aufruft, um die Tracks einer Playlist abzurufen. Die Ergenisse werden als JSON-Datei im HDFS (Hadoop Distributed File System) gespeichert. Dabei wird zunächst ein Zugriffstoken von der Spotify-API angefordert und anschließend die Tracks der Playlist abgerufen. Die Playlist-ID wurde vor Containerstart von dem User eingegeben und wird zum Start der ETL aus dem Textdatei in eine Variable eingelesen, die Task verwendet.
 
-4. **Herunterladen der Audiofeatures für die zuor gefundenen Tracks: get_audio_features**
+4. **Herunterladen der Audiofeatures für die zuor gefundenen Tracks: `get_audio_features`**
 
    - Die Task `get_audio_features` ist ein PythonOperator, der die Funktion `get_for_each_track_audio_features` aufruft. Diese Funktion dient dazu, die Audio-Features für jeden Track einer Playlist abzurufen und als JSON-Dateien im HDFS zu speichern. Dabei liest `get_for_each_track_audio_features` die Track-IDs aus einer JSON-Datei, die die Playlist-Daten enthält, und ruft die entsprechenden Audio-Features über die Spotify-API ab.
 
-5. **Speichern im finalen Verzeichnis: save_to_final_path**
+5. **Speichern im finalen Verzeichnis: `save_to_final_path`**
 
    - Die Task `save_to_final_path` ist ein PythonOperator, der die Funktion `save_tracks_to_final_path` aufruft, um die abgerufenen Track- und Audio-Feature-Daten zu verarbeiten und die bereinigten Daten als Parquet-Dateien im HDFS zu speichern.
 
-6. **Kategorien berechnen und in Datenbank speichern: calculate_category_and_save_to_db**
+6. **Kategorien berechnen und in Datenbank speichern: `calculate_category_and_save_to_db`**
 
    - Die Task `calculate_category_and_save_to_db` ist ein PythonOperator, der die Funktion calculate_category aufruft, um die Audio-Features der Tracks zu analysieren. Die Tracks werden mithilfe von Apache Spark, in verschiedene Kategorien eingeordnet und die Ergebnisse in einer MongoDB-Datenbank zu gespeichert. Diese ist die endgültige Datenbank.
 

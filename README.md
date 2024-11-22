@@ -10,7 +10,7 @@ Der ETL-Workflow nutzt Apache Airflow, um Daten aus der Spotify-API zu extrahier
 
 - [Projektstruktur](#Projektstruktur)
 - [Airflow](#Airflow)
-- [Funktionen](#Funktionen)
+- [Weitere verwendete Skripte](#Weitere verwendete Skripte)
 - [Ausführung](#Ausführung)
 
 ## Projektstruktur
@@ -60,7 +60,7 @@ Die Projektstrutur sieht wie folgt aus:
 
 ## **Airflow**
 
-Die Airflow-DAG besteht aus 6 Tasks, die im Folgenden weiter erklärt werden.
+Die Airflow-DAG besteht aus 6 Tasks, die im Folgenden weiter erklärt werden. Die Reihenfolge entspricht der hier aufgeführten Nummerierung.
 
 ### **Ablauf des Workflows**
 
@@ -88,11 +88,11 @@ Die Airflow-DAG besteht aus 6 Tasks, die im Folgenden weiter erklärt werden.
 
    - Die Task `calculate_category_and_save_to_db` ist ein PythonOperator, der die Funktion calculate_category aufruft, um die Audio-Features der Tracks zu analysieren. Die Tracks werden mithilfe von Apache Spark, in verschiedene Kategorien eingeordnet und die Ergebnisse in einer MongoDB-Datenbank zu gespeichert. Diese ist die endgültige Datenbank.
 
-## 🔍 **Weitere verwendete Skripte**
+## **Weitere verwendete Skripte**
 
 Wie schon in dem Kaptiel Ordnerstruktur erwähnt, gibt es noch zwei weitere Python-Skripte, die die Funktionweise von der ETL sicherstellen. Sie sind für die Ausführung und Darstellung der Ergebnisse wichtig.
 
-1. **`set_playlist_id.py`:
+1. **`set_playlist_id.py`**:
    - Das Skript ermöglicht es dem Benutzer, eine Playlist-ID einzugeben und diese in einer Datei zu speichern. Diese Playlist-ID wird später von der Airflow-DAG verwendet, um die Tracks der angegebenen Playlist von der Spotify-API abzurufen. Dazu erstellt das Skript eine Text-Datei, die die Playlist-ID enthält. Diese wird in dem Verzeichnis `Playlist` gespeichert, worauf die DAG zugriff hat und dieses auslesen kann.
   
 2. **`app.py`**:

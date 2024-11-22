@@ -17,8 +17,11 @@ ADD ./requirements.txt /home/tmp/python/
 RUN wget https://repo1.maven.org/maven2/org/mongodb/spark/mongo-spark-connector_2.11/2.3.4/mongo-spark-connector_2.11-2.3.4.jar -P /home/airflow/airflow/plugins/
 
 RUN mkdir -p /user/hadoop/spotify/track_data/raw
+RUN mkdir -p /user/hadoop/spotify/audio_features/raw
 RUN mkdir -p /user/hadoop/spotify/track_data/final
+RUN mkdir -p /user/hadoop/spotify/audio_features/final
 RUN chown -R airflow:airflow /user/hadoop/spotify/track_data
+RUN chown -R airflow:airflow /user/hadoop/spotify/audio_features
 
 
 WORKDIR /home/tmp/python/

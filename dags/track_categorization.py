@@ -47,7 +47,7 @@ def get_for_each_track_audio_features():
         track = item['track']
         track_id = track['id']
          
-        last_saved_file = f'/user/hadoop/spotify/track_data/raw/audio_features_{track_id}.json'
+        last_saved_file = f'/user/hadoop/spotify/audio_features/raw/audio_features_{track_id}.json'
         
         task = BashOperator(
             task_id=f'get_track_details_{track_id}',
@@ -98,7 +98,7 @@ def save_tracks_to_final_path():
     df_fresh_created = pd.concat(track_list, ignore_index=True)
     
 
-    audio_files = glob.glob('/user/hadoop/spotify/track_data/raw/audio_features_*.json')
+    audio_files = glob.glob('/user/hadoop/spotify/audio_features/raw/audio_features_*.json')
     
 
     dataframes = []
@@ -138,7 +138,7 @@ def save_tracks_to_final_path():
     combined_df = pd.concat(dataframes, ignore_index=True)
     
     df_fresh_created.to_parquet('/user/hadoop/spotify/track_data/final/tracks.parquet', index=False)
-    combined_df.to_parquet('/user/hadoop/spotify/track_data/final/audio_features.parquet', index=False)
+    combined_df.to_parquet('/user/hadoop/spotify/audio_features/final/audio_features.parquet', index=False)
     
     return df
 
@@ -154,7 +154,7 @@ def calculate_category():
     
     
     tracks_df = spark.read.parquet('file:///user/hadoop/spotify/track_data/final/tracks.parquet')
-    audio_features_df = spark.read.parquet('file:///user/hadoop/spotify/track_data/final/audio_features.parquet')
+    audio_features_df = spark.read.parquet('file:///user/hadoop/spotify/audio_features/final/audio_features.parquet')
   
     audio_features_df = audio_features_df.withColumn(
         "category", 
@@ -198,8 +198,13 @@ clear_directorys = BashOperator(
     bash_command="""
     hdfs dfs -rm -r /user/hadoop/spotify/track_data/raw
     hdfs dfs -rm -r /user/hadoop/spotify/track_data/final
+    hdfs dfs -rm -r /user/hadoop/spotify/audio_features/raw
+    hdfs dfs -rm -r /user/hadoop/spotify/audio_features/final
+    hdfs dfs -mkdir -p /user/hadoop/spotify/audio_features/raw
+    hdfs dfs -mkdir -p /user/hadoop/spotify/audio_features/final
     hdfs dfs -mkdir -p /user/hadoop/spotify/track_data/raw
     hdfs dfs -mkdir -p /user/hadoop/spotify/track_data/final
+    
     """,
     dag=dag
 )

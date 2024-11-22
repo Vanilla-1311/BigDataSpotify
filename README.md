@@ -96,7 +96,7 @@ Wie schon in dem Kaptiel Ordnerstruktur erwähnt, gibt es noch zwei weitere Pyth
    - Das Skript ermöglicht es dem Benutzer, eine Playlist-ID einzugeben und diese in einer Datei zu speichern. Diese Playlist-ID wird später von der Airflow-DAG verwendet, um die Tracks der angegebenen Playlist von der Spotify-API abzurufen. Dazu erstellt das Skript eine Text-Datei, die die Playlist-ID enthält. Diese wird in dem Verzeichnis `Playlist` gespeichert, worauf die DAG zugriff hat und dieses auslesen kann.
   
 2. **`app.py`**:
-   -Das Skript erstellt eine Flask-Webanwendung, die eine Verbindung zu einer MongoDB-Datenbank herstellt und eine HTML-Seite rendert, die alle Tracks aus der Datenbank anzeigt. Somit wird dadurch die Weboberfläche bereitgestellt und sichergestellt, dass eine Verbindung zu der Datenbank besteht.
+   - Das Skript erstellt eine Flask-Webanwendung, die eine Verbindung zu einer MongoDB-Datenbank herstellt und eine HTML-Seite rendert, die alle Tracks aus der Datenbank anzeigt. Somit wird dadurch die Weboberfläche bereitgestellt und sichergestellt, dass eine Verbindung zu der Datenbank besteht.
 
 ## **Ausführung**
 
